@@ -1,0 +1,15 @@
+Failed WhatsApp 7439539296: 
+[31m[49mHTTP Error[0m [37m[49mYour request was:[0m
+
+[36m[49mPOST /Accounts/AC296aebbf38cf898e1a73a2170246036b/Messages.json[0m
+
+[37m[49mTwilio returned the following information:[0m
+
+[34m[49mUnable to create record: Twilio could not find a Channel with the specified From address[0m
+
+[37m[49mMore information may be available here:[0m
+
+[34m[49mhttps://www.twilio.com/docs/errors/63007[0m
+
+
+Failed Email argha820@gmail.com: (535, b'5.7.8 Username and Password not accepted. For more information, go to\n5.7.8  https://support.google.com/mail/?p=BadCredentials 98e67ed59e1d1-3087bb4152dsm51687a91.6 - gsmtp')

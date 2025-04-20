@@ -1,0 +1,15 @@
+Failed WhatsApp 7439539296: 
+[31m[49mHTTP Error[0m [37m[49mYour request was:[0m
+
+[36m[49mPOST /Accounts/AC296aebbf38cf898e1a73a2170246036b/Messages.json[0m
+
+[37m[49mTwilio returned the following information:[0m
+
+[34m[49mUnable to create record: Twilio could not find a Channel with the specified From address[0m
+
+[37m[49mMore information may be available here:[0m
+
+[34m[49mhttps://www.twilio.com/docs/errors/63007[0m
+
+
+Email sent to argha820@gmail.com
