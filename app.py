@@ -29,17 +29,17 @@ CORS(app)
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(LOG_FOLDER, exist_ok=True)
 
-PERMANENT_SIGNATURE = "\n\n---\nRegards,\nArgha Khawas\nNutrition Expert"
+PERMANENT_SIGNATURE = "\n\n---\nRegards,\nArgha Khawas\nNutrition Expert\n\nContact: 123-456-7890"
 
 # === Email Sender ===
 def send_email(to_email, subject, body, image=None):
     try:
-        msg = MIMEMultipart()
+        msg = MIMEMultipart('mixed')
         msg['From'] = SENDER_EMAIL
         msg['To'] = to_email
         msg['Subject'] = subject
-        msg['Reply-To'] = SENDER_EMAIL  # Adding Reply-To header
-        msg['Return-Path'] = SENDER_EMAIL  # Return-Path to avoid issues
+        msg['Reply-To'] = SENDER_EMAIL
+        msg['Return-Path'] = SENDER_EMAIL
         msg.attach(MIMEText(body + PERMANENT_SIGNATURE, 'plain'))
 
         if image:
@@ -47,11 +47,21 @@ def send_email(to_email, subject, body, image=None):
             part = MIMEApplication(img_data, Name=image.filename)
             part['Content-Disposition'] = f'attachment; filename="{image.filename}"'
             msg.attach(part)
-            image.seek(0)
+
+        # Add HTML version of email to avoid spam filters
+        html_body = f"""
+        <html>
+            <body>
+                <p>{body.replace("\n", "<br>")}</p>
+                <p>{PERMANENT_SIGNATURE.replace("\n", "<br>")}</p>
+            </body>
+        </html>
+        """
+        msg.attach(MIMEText(html_body, 'html'))
 
         # Use TLS for secure email sending
         server = smtplib.SMTP("smtp.gmail.com", 587)
-        server.starttls()  # Start TLS (Transport Layer Security)
+        server.starttls()
         server.login(SENDER_EMAIL, SENDER_PASSWORD)
         server.sendmail(SENDER_EMAIL, to_email, msg.as_string())
         server.quit()
