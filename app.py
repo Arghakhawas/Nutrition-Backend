@@ -10,6 +10,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 import traceback
 from dotenv import load_dotenv
+import time
 
 # === Load .env Variables ===
 load_dotenv()
@@ -18,7 +19,7 @@ load_dotenv()
 UPLOAD_FOLDER = "uploads"
 LOG_FOLDER = "logs"
 SENDER_EMAIL = "argha820@gmail.com"
-SENDER_PASSWORD = os.environ.get("EMAIL_PASSWORD")  # ✅ Must be in .env file
+SENDER_PASSWORD = os.environ.get("EMAIL_PASSWORD")
 
 # === App Initialization ===
 app = Flask(__name__)
@@ -28,6 +29,8 @@ CORS(app)
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(LOG_FOLDER, exist_ok=True)
 
+PERMANENT_SIGNATURE = "\n\n---\nRegards,\nArgha Khawas\nNutrition Expert"
+
 # === Email Sender ===
 def send_email(to_email, subject, body, image=None):
     try:
@@ -35,7 +38,7 @@ def send_email(to_email, subject, body, image=None):
         msg['From'] = SENDER_EMAIL
         msg['To'] = to_email
         msg['Subject'] = subject
-        msg.attach(MIMEText(body, 'plain'))
+        msg.attach(MIMEText(body + PERMANENT_SIGNATURE, 'plain'))
 
         if image:
             img_data = image.read()
@@ -45,7 +48,6 @@ def send_email(to_email, subject, body, image=None):
             image.seek(0)
 
         server = smtplib.SMTP("smtp.gmail.com", 587)
-        server.set_debuglevel(1)  # Enable debug mode to capture errors
         server.starttls()
         server.login(SENDER_EMAIL, SENDER_PASSWORD)
         server.sendmail(SENDER_EMAIL, to_email, msg.as_string())
@@ -53,7 +55,7 @@ def send_email(to_email, subject, body, image=None):
 
     except Exception as e:
         print(f"Error sending email to {to_email}: {e}")
-        raise e  # This will ensure that the error is logged for each failed email
+        raise e
 
 # === Send Endpoint ===
 @app.route('/send', methods=['POST'])
@@ -85,8 +87,9 @@ def send_messages():
                     if pd.isna(name) or pd.isna(email):
                         continue
                     personalized_msg = message_template.replace("(Name)", name)
-                    send_email(email, "Message from Argha", personalized_msg, image)
+                    send_email(email, "Message from Argha Nutrition", personalized_msg, image)
                     log.write(f"✅ Sent to {email}\n")
+                    time.sleep(2)  # 2-second delay between emails
                 except Exception as e:
                     log.write(f"❌ Failed to {row.get('Email')}: {e}\n")
                     continue
