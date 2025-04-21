@@ -38,6 +38,8 @@ def send_email(to_email, subject, body, image=None):
         msg['From'] = SENDER_EMAIL
         msg['To'] = to_email
         msg['Subject'] = subject
+        msg['Reply-To'] = SENDER_EMAIL  # Adding Reply-To header
+        msg['Return-Path'] = SENDER_EMAIL  # Return-Path to avoid issues
         msg.attach(MIMEText(body + PERMANENT_SIGNATURE, 'plain'))
 
         if image:
@@ -47,8 +49,9 @@ def send_email(to_email, subject, body, image=None):
             msg.attach(part)
             image.seek(0)
 
+        # Use TLS for secure email sending
         server = smtplib.SMTP("smtp.gmail.com", 587)
-        server.starttls()
+        server.starttls()  # Start TLS (Transport Layer Security)
         server.login(SENDER_EMAIL, SENDER_PASSWORD)
         server.sendmail(SENDER_EMAIL, to_email, msg.as_string())
         server.quit()
@@ -87,7 +90,7 @@ def send_messages():
                     if pd.isna(name) or pd.isna(email):
                         continue
                     personalized_msg = message_template.replace("(Name)", name)
-                    send_email(email, "Message from Argha Nutrition", personalized_msg, image)
+                    send_email(email, "Message from Argha", personalized_msg, image)
                     log.write(f"✅ Sent to {email}\n")
                     time.sleep(2)  # 2-second delay between emails
                 except Exception as e:
