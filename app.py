@@ -29,39 +29,28 @@ CORS(app)
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(LOG_FOLDER, exist_ok=True)
 
-PERMANENT_SIGNATURE = "\n\n---\nRegards,\nArgha Khawas\nNutrition Expert\n\nContact: 123-456-7890"
+# Define signature to avoid spam
+PERMANENT_SIGNATURE = "\n\n---\nBest regards,\nArgha Khawas\nNutrition Expert\nContact: 123-456-7890"
 
 # === Email Sender ===
 def send_email(to_email, subject, body, image=None):
     try:
-        msg = MIMEMultipart('mixed')
+        msg = MIMEMultipart()
         msg['From'] = SENDER_EMAIL
         msg['To'] = to_email
         msg['Subject'] = subject
-        msg['Reply-To'] = SENDER_EMAIL
-        msg['Return-Path'] = SENDER_EMAIL
         msg.attach(MIMEText(body + PERMANENT_SIGNATURE, 'plain'))
 
+        # Ensure that the email has an image or attachment
         if image:
             img_data = image.read()
             part = MIMEApplication(img_data, Name=image.filename)
             part['Content-Disposition'] = f'attachment; filename="{image.filename}"'
             msg.attach(part)
+            image.seek(0)
 
-        # Add HTML version of email to avoid spam filters
-        html_body = f"""
-        <html>
-            <body>
-                <p>{body.replace("\n", "<br>")}</p>
-                <p>{PERMANENT_SIGNATURE.replace("\n", "<br>")}</p>
-            </body>
-        </html>
-        """
-        msg.attach(MIMEText(html_body, 'html'))
-
-        # Use TLS for secure email sending
-        server = smtplib.SMTP("smtp.gmail.com", 587)
-        server.starttls()
+        # SMTP configuration with SSL for better security
+        server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
         server.login(SENDER_EMAIL, SENDER_PASSWORD)
         server.sendmail(SENDER_EMAIL, to_email, msg.as_string())
         server.quit()
