@@ -30,24 +30,30 @@ os.makedirs(LOG_FOLDER, exist_ok=True)
 
 # === Email Sender ===
 def send_email(to_email, subject, body, image=None):
-    msg = MIMEMultipart()
-    msg['From'] = SENDER_EMAIL
-    msg['To'] = to_email
-    msg['Subject'] = subject
-    msg.attach(MIMEText(body, 'plain'))
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = SENDER_EMAIL
+        msg['To'] = to_email
+        msg['Subject'] = subject
+        msg.attach(MIMEText(body, 'plain'))
 
-    if image:
-        img_data = image.read()
-        part = MIMEApplication(img_data, Name=image.filename)
-        part['Content-Disposition'] = f'attachment; filename="{image.filename}"'
-        msg.attach(part)
-        image.seek(0)
+        if image:
+            img_data = image.read()
+            part = MIMEApplication(img_data, Name=image.filename)
+            part['Content-Disposition'] = f'attachment; filename="{image.filename}"'
+            msg.attach(part)
+            image.seek(0)
 
-    server = smtplib.SMTP("smtp.gmail.com", 587)
-    server.starttls()
-    server.login(SENDER_EMAIL, SENDER_PASSWORD)
-    server.sendmail(SENDER_EMAIL, to_email, msg.as_string())
-    server.quit()
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.set_debuglevel(1)  # Enable debug mode to capture errors
+        server.starttls()
+        server.login(SENDER_EMAIL, SENDER_PASSWORD)
+        server.sendmail(SENDER_EMAIL, to_email, msg.as_string())
+        server.quit()
+
+    except Exception as e:
+        print(f"Error sending email to {to_email}: {e}")
+        raise e  # This will ensure that the error is logged for each failed email
 
 # === Send Endpoint ===
 @app.route('/send', methods=['POST'])
