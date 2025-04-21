@@ -67,7 +67,7 @@ def send_messages():
         log_filename = f"log_{datetime.now().strftime('%Y%m%d%H%M%S')}.txt"
         log_path = os.path.join(LOG_FOLDER, log_filename)
 
-        with open(log_path, "w", encoding="utf-8") as log:  # ✅ Fixed Unicode issue here
+        with open(log_path, "w", encoding="utf-8") as log:
             for _, row in df.iterrows():
                 try:
                     name = str(row['Name']).strip()
@@ -95,6 +95,8 @@ def send_messages():
 def download_log(filename):
     return send_from_directory(LOG_FOLDER, filename)
 
-# === Main ===
+# === Main Runner ===
 if __name__ == '__main__':
-    app.run(debug=True)
+    import os
+    port = int(os.environ.get("PORT", 5000))  # ✅ Use dynamic port for deployment
+    app.run(host="0.0.0.0", port=port, debug=True)
