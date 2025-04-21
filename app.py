@@ -99,6 +99,11 @@ def send_messages():
 def download_log(filename):
     return send_from_directory(LOG_FOLDER, filename)
 
+# === Health Check / Root Route ===
+@app.route('/')
+def home():
+    return jsonify({"message": "✅ Nutrition Backend is live and running!"})
+
 # === Main Runner ===
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
