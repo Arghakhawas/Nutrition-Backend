@@ -10,15 +10,14 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 import traceback
 from dotenv import load_dotenv
-
-# === Load Environment Variables ===
 load_dotenv()
 
 # === Configuration ===
 UPLOAD_FOLDER = "uploads"
 LOG_FOLDER = "logs"
-SENDER_EMAIL = os.environ.get("EMAIL_USER")
+SENDER_EMAIL = "argha820@gmail.com"
 SENDER_PASSWORD = os.environ.get("EMAIL_PASSWORD")
+ # Use Gmail App Password
 
 # === App Initialization ===
 app = Flask(__name__)
@@ -41,7 +40,7 @@ def send_email(to_email, subject, body, image=None):
         part = MIMEApplication(img_data, Name=image.filename)
         part['Content-Disposition'] = f'attachment; filename="{image.filename}"'
         msg.attach(part)
-        image.seek(0)  # Reset file pointer
+        image.seek(0)  # Reset stream for next use
 
     server = smtplib.SMTP("smtp.gmail.com", 587)
     server.starttls()
@@ -101,5 +100,6 @@ def download_log(filename):
 
 # === Main Runner ===
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
+    import os
+    port = int(os.environ.get("PORT", 5000))  # ✅ Use dynamic port for deployment
     app.run(host="0.0.0.0", port=port, debug=True)
