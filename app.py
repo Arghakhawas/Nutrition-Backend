@@ -49,9 +49,8 @@ def send_email(to_email, subject, body, image=None):
         msg['X-Priority'] = '3'
         msg['X-Mailer'] = 'Python Flask'
 
-        # Plain text
-        full_body = body + "\n\n" + PERMANENT_SIGNATURE
-        msg.attach(MIMEText(full_body, 'plain'))
+        # Plain text (without signature to avoid duplication)
+        msg.attach(MIMEText(body, 'plain'))
 
         # Attachment
         if image:
@@ -60,7 +59,7 @@ def send_email(to_email, subject, body, image=None):
             part['Content-Disposition'] = f'attachment; filename="{image.filename}"'
             msg.attach(part)
 
-        # HTML version to reduce spam
+        # HTML version with signature
         html_body_content = body.replace("\n", "<br>")
         html_signature = PERMANENT_SIGNATURE.replace("\n", "<br>")
         html_body = f"""
@@ -73,7 +72,7 @@ def send_email(to_email, subject, body, image=None):
         """
         msg.attach(MIMEText(html_body, 'html'))
 
-        # SMTP sending with TLS
+        # SMTP sending
         server = smtplib.SMTP("smtp.gmail.com", 587)
         server.starttls()
         server.login(SENDER_EMAIL, SENDER_PASSWORD)
@@ -116,7 +115,7 @@ def send_messages():
                     personalized_msg = message_template.replace("(Name)", name)
                     send_email(email, "Message from Argha", personalized_msg, image)
                     log.write(f"✅ Sent to {email}\n")
-                    time.sleep(2)  # Delay to reduce spam flag
+                    time.sleep(2)  # Delay to avoid spam flagging
                 except Exception as e:
                     log.write(f"❌ Failed to {row.get('Email')}: {e}\n")
                     continue
@@ -135,7 +134,7 @@ def send_messages():
 def download_log(filename):
     return send_from_directory(LOG_FOLDER, filename)
 
-# === Health Check / Root Route ===
+# === Health Check ===
 @app.route('/')
 def home():
     return jsonify({"message": "✅ Nutrition Backend is live and running!"})
