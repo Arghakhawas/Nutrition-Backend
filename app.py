@@ -2,92 +2,120 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import pandas as pd
 import os
-import smtplib
-import time
-from email.message import EmailMessage
+from datetime import datetime
 from werkzeug.utils import secure_filename
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.application import MIMEApplication
+import traceback
+from dotenv import load_dotenv
+import time
 
-app = Flask(__name__)
-CORS(app)
+# === Load .env Variables ===
+load_dotenv()
 
+# === Configuration ===
 UPLOAD_FOLDER = "uploads"
 LOG_FOLDER = "logs"
+SENDER_EMAIL = "argha820@gmail.com"
+SENDER_PASSWORD = os.environ.get("EMAIL_PASSWORD")
+
+# === App Initialization ===
+app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+CORS(app)
+
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(LOG_FOLDER, exist_ok=True)
 
-EMAIL_ADDRESS = "argha820@gmail.com"
-EMAIL_PASSWORD = "your_app_password"  # Use app-specific password
+# Define signature to avoid spam
+PERMANENT_SIGNATURE = "\n\n---\nBest regards,\nArgha Khawas\nNutrition Expert\nContact: 9073357827"
 
-@app.route("/send", methods=["POST"])
-def send_emails():
-    file = request.files.get("excel")
-    image = request.files.get("image")
-    message_template = request.form.get("message", "").strip()
+# === Email Sender ===
+def send_email(to_email, subject, body, image=None):
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = SENDER_EMAIL
+        msg['To'] = to_email
+        msg['Subject'] = subject
+        msg.attach(MIMEText(body + PERMANENT_SIGNATURE, 'plain'))
 
-    if not file or not message_template:
-        return jsonify({"status": "Missing file or message"}), 400
+        # Ensure that the email has an image or attachment
+        if image:
+            img_data = image.read()
+            part = MIMEApplication(img_data, Name=image.filename)
+            part['Content-Disposition'] = f'attachment; filename="{image.filename}"'
+            msg.attach(part)
+            image.seek(0)
 
-    filename = secure_filename(file.filename)
-    filepath = os.path.join(UPLOAD_FOLDER, filename)
-    file.save(filepath)
+        # SMTP configuration with SSL for better security
+        server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
+        server.login(SENDER_EMAIL, SENDER_PASSWORD)
+        server.sendmail(SENDER_EMAIL, to_email, msg.as_string())
+        server.quit()
 
-    df = pd.read_excel(filepath)
+    except Exception as e:
+        print(f"Error sending email to {to_email}: {e}")
+        raise e
 
-    if "Email" not in df.columns:
-        return jsonify({"status": "Missing 'Email' column in Excel"}), 400
+# === Send Endpoint ===
+@app.route('/send', methods=['POST'])
+def send_messages():
+    try:
+        excel = request.files.get('excel')
+        if not excel or 'message' not in request.form:
+            return jsonify({"status": "❌ Excel file and message are required."}), 400
 
-    has_name = "Name" in df.columns
-    attachment_path = None
+        image = request.files.get('image')
+        message_template = request.form['message']
+        filename = secure_filename(excel.filename)
+        excel_path = os.path.join(UPLOAD_FOLDER, filename)
+        excel.save(excel_path)
 
-    if image:
-        attachment_filename = secure_filename(image.filename)
-        attachment_path = os.path.join(UPLOAD_FOLDER, attachment_filename)
-        image.save(attachment_path)
+        df = pd.read_excel(excel_path)
 
-    log_file_path = os.path.join(LOG_FOLDER, f"log_{int(time.time())}.txt")
-    success_log = []
+        if 'Email' not in df.columns or 'Name' not in df.columns:
+            return jsonify({"status": "❌ Excel must contain 'Email' and 'Name' columns."}), 400
 
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-        smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+        log_filename = f"log_{datetime.now().strftime('%Y%m%d%H%M%S')}.txt"
+        log_path = os.path.join(LOG_FOLDER, log_filename)
 
-        for index, row in df.iterrows():
-            email = row["Email"]
-            name = row["Name"] if has_name and pd.notna(row["Name"]) else "Sir/Mam"
-            personalized_message = message_template.replace("(Name)", name)
-            full_message = f"{personalized_message}\n\nBest regards,\nTeam Nutrition by Argha"
+        with open(log_path, "w", encoding="utf-8") as log:
+            for _, row in df.iterrows():
+                try:
+                    name = str(row['Name']).strip()
+                    email = str(row['Email']).strip()
+                    if pd.isna(name) or pd.isna(email):
+                        continue
+                    personalized_msg = message_template.replace("(Name)", name)
+                    send_email(email, "Message from Argha", personalized_msg, image)
+                    log.write(f"✅ Sent to {email}\n")
+                    time.sleep(2)  # 2-second delay between emails
+                except Exception as e:
+                    log.write(f"❌ Failed to {row.get('Email')}: {e}\n")
+                    continue
 
-            msg = EmailMessage()
-            msg["Subject"] = "Important Update from Nutrition by Argha"
-            msg["From"] = EMAIL_ADDRESS
-            msg["To"] = email
-            msg.set_content(full_message)
+        return jsonify({
+            "status": "✅ Emails sent successfully.",
+            "log_url": f"/logs/{log_filename}"
+        }), 200
 
-            if attachment_path:
-                with open(attachment_path, "rb") as f:
-                    file_data = f.read()
-                    file_name = os.path.basename(attachment_path)
-                    maintype, subtype = ("application", "pdf") if file_name.endswith(".pdf") else ("image", "jpeg")
-                    msg.add_attachment(file_data, maintype=maintype, subtype=subtype, filename=file_name)
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"status": f"❌ Internal Server Error: {e}"}), 500
 
-            try:
-                smtp.send_message(msg)
-                success_log.append(f"{email} - ✅ Sent")
-            except Exception as e:
-                success_log.append(f"{email} - ❌ Failed: {str(e)}")
-
-            time.sleep(2)  # 2-second delay to reduce spam risk
-
-    with open(log_file_path, "w") as log_file:
-        log_file.write("\n".join(success_log))
-
-    return jsonify({
-        "status": "success",
-        "log_url": f"/download/{os.path.basename(log_file_path)}"
-    })
-
-@app.route("/download/<filename>")
+# === Serve Logs ===
+@app.route('/logs/<path:filename>')
 def download_log(filename):
-    return send_from_directory(LOG_FOLDER, filename, as_attachment=True)
+    return send_from_directory(LOG_FOLDER, filename)
 
-if __name__ == "__main__":
-    app.run(debug=True)
+# === Health Check / Root Route ===
+@app.route('/')
+def home():
+    return jsonify({"message": "✅ Nutrition Backend is live and running!"})
+
+# === Main Runner ===
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=True)
