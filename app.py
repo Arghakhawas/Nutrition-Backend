@@ -33,11 +33,11 @@ PERMANENT_SIGNATURE = """
 ---
 Regards,  
 Argha Khawas  
-Nutrition Expert  
+Nutrition By Argha
 📞 Contact: 9073357827
 """
 
-# === Email Sender ===
+# === Email Sender (HTML only to prevent duplication) ===
 def send_email(to_email, subject, body, image=None):
     try:
         msg = MIMEMultipart('mixed')
@@ -49,8 +49,19 @@ def send_email(to_email, subject, body, image=None):
         msg['X-Priority'] = '3'
         msg['X-Mailer'] = 'Python Flask'
 
-        # Plain text (without signature to avoid duplication)
-        msg.attach(MIMEText(body, 'plain'))
+        # HTML version only
+        html_body_content = body.replace("\n", "<br>")
+        html_signature = PERMANENT_SIGNATURE.replace("\n", "<br>")
+        html_body = f"""
+        <html>
+            <body>
+                <p>{html_body_content}</p>
+                <br>
+                <p>{html_signature}</p>
+            </body>
+        </html>
+        """
+        msg.attach(MIMEText(html_body, 'html'))
 
         # Attachment
         if image:
@@ -59,20 +70,7 @@ def send_email(to_email, subject, body, image=None):
             part['Content-Disposition'] = f'attachment; filename="{image.filename}"'
             msg.attach(part)
 
-        # HTML version with signature
-        html_body_content = body.replace("\n", "<br>")
-        html_signature = PERMANENT_SIGNATURE.replace("\n", "<br>")
-        html_body = f"""
-        <html>
-            <body>
-                <p>{html_body_content}</p>
-                <p>{html_signature}</p>
-            </body>
-        </html>
-        """
-        msg.attach(MIMEText(html_body, 'html'))
-
-        # SMTP sending
+        # SMTP Sending
         server = smtplib.SMTP("smtp.gmail.com", 587)
         server.starttls()
         server.login(SENDER_EMAIL, SENDER_PASSWORD)
