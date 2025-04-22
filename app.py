@@ -29,7 +29,13 @@ CORS(app)
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(LOG_FOLDER, exist_ok=True)
 
-PERMANENT_SIGNATURE = "\n\n---\nRegards,\nArgha Khawas\nNutrition Expert\n\nContact: 9073357827"
+PERMANENT_SIGNATURE = """
+---
+Regards,  
+Argha Khawas  
+Nutrition Expert  
+📞 Contact: 9073357827
+"""
 
 # === Email Sender ===
 def send_email(to_email, subject, body, image=None):
@@ -40,26 +46,34 @@ def send_email(to_email, subject, body, image=None):
         msg['Subject'] = subject
         msg['Reply-To'] = SENDER_EMAIL
         msg['Return-Path'] = SENDER_EMAIL
-        msg.attach(MIMEText(body + PERMANENT_SIGNATURE, 'plain'))
+        msg['X-Priority'] = '3'
+        msg['X-Mailer'] = 'Python Flask'
 
+        # Plain text
+        full_body = body + "\n\n" + PERMANENT_SIGNATURE
+        msg.attach(MIMEText(full_body, 'plain'))
+
+        # Attachment
         if image:
             img_data = image.read()
             part = MIMEApplication(img_data, Name=image.filename)
             part['Content-Disposition'] = f'attachment; filename="{image.filename}"'
             msg.attach(part)
 
-        # Add HTML version of email to avoid spam filters
+        # HTML version to reduce spam
+        html_body_content = body.replace("\n", "<br>")
+        html_signature = PERMANENT_SIGNATURE.replace("\n", "<br>")
         html_body = f"""
         <html>
             <body>
-                <p>{body.replace("\n", "<br>")}</p>
-                <p>{PERMANENT_SIGNATURE.replace("\n", "<br>")}</p>
+                <p>{html_body_content}</p>
+                <p>{html_signature}</p>
             </body>
         </html>
         """
         msg.attach(MIMEText(html_body, 'html'))
 
-        # Use TLS for secure email sending
+        # SMTP sending with TLS
         server = smtplib.SMTP("smtp.gmail.com", 587)
         server.starttls()
         server.login(SENDER_EMAIL, SENDER_PASSWORD)
@@ -67,7 +81,7 @@ def send_email(to_email, subject, body, image=None):
         server.quit()
 
     except Exception as e:
-        print(f"Error sending email to {to_email}: {e}")
+        print(f"❌ Error sending email to {to_email}: {e}")
         raise e
 
 # === Send Endpoint ===
@@ -102,7 +116,7 @@ def send_messages():
                     personalized_msg = message_template.replace("(Name)", name)
                     send_email(email, "Message from Argha", personalized_msg, image)
                     log.write(f"✅ Sent to {email}\n")
-                    time.sleep(2)  # 2-second delay between emails
+                    time.sleep(2)  # Delay to reduce spam flag
                 except Exception as e:
                     log.write(f"❌ Failed to {row.get('Email')}: {e}\n")
                     continue
